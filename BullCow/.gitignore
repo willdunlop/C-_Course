@@ -1,0 +1,8 @@
+.vscode
+./.vscode
+
+BullCow/main.dSYM
+./BullCow/main.dSYM
+
+BullCow/.vscode
+./BullCow/.vscode

@@ -1,10 +1,12 @@
 /**
- * 
+ * Compile command
+ *      g++  main.cpp FBullCowGame.cpp -std=c++11 -o main
  */
 
 #include <iostream>     /** FN.1 */
 #include <string>       /** FN.2 */
 #include "FBullCowGame.h"
+
 
 // using namespace std;    /** FN.3 */
 
@@ -15,8 +17,10 @@ using int32 = int;
 /** These declerations can be plaice in a header file, main.h. Then simply include it */
 void PrintIntro();      /** FN.5.1 */
 void PlayGame();
-FText GetGuess();
+FText GetValidGuess();
 bool AskToPlayAgain();
+void PrintGameSummary();
+
 FBullCowGame BCGame;
 
 /** The entry point of our application */
@@ -36,13 +40,12 @@ int main()
 /** Type is void because it returns nothing */
 void PrintIntro()       /** FN.5.2 */
 {
-    int32 constexpr WORD_LENGTH = 5;          /** FN.4 */
     std::cout << std::endl;
-    std::cout << "#################################\n";
+    std::cout << "\e[33m#################################\n";
     std::cout << "### Welcome to Bulls and Cows ###\n";  // You could also write `std::cout << "our FText" << std::endl`, std::endl being a method of std that quite literally ends the line
-    std::cout << "#################################\n";
+    std::cout << "#################################\e[0m\n";
     std::cout << std::endl;
-    std::cout << "Can you guess the " << WORD_LENGTH << " letter isogram I'm thinking of?\n";
+    std::cout << "\e[37mCan you guess the " << BCGame.GetHiddenWordLength() << " letter isogram I'm thinking of?\e[0m\n";
     std::cout << std::endl;
 
     return;
@@ -53,38 +56,76 @@ void PlayGame()
     BCGame.Reset();
     int32 MaxTries = BCGame.GetMaxTries();
 
-    for (int32 count = 0; count < MaxTries; count++)
+    while (!BCGame.IsGameWon() && BCGame.GetCurrentTry() <= MaxTries)
     {
-        FText UserGuess = GetGuess();
-        FBullCowCount BullCowCount = BCGame.SubmitGuess(UserGuess);
+        FText UserGuess = GetValidGuess();
+
+        // if (Status)
+        FBullCowCount BullCowCount = BCGame.SubmitValidGuess(UserGuess);
         // std::cout << "Your guess was: " << "\'" << UserGuess << "\'" << std::endl;
-        std::cout << "Bulls = " << BullCowCount.Bulls;
-        std::cout << ", Cows = " << BullCowCount.Cows << std::endl;
-
+        std::cout << "\e[37mBulls = " << BullCowCount.Bulls;
+        std::cout << ", Cows = " << BullCowCount.Cows << "\e[0m" << std::endl;
     }
-
+    std::cout << std::endl;
+    PrintGameSummary();
     return;
 }
 
-FText GetGuess()
+FText GetValidGuess()
 {
-    int32 CurrentTry = BCGame.GetCurrentTry();
-    std::cout << std::endl;
-    std::cout << "Attempt " << CurrentTry << ": " << "Enter your guess: ";
+    EGuessValidity Status = EGuessValidity::Invalid_Status;
     FText Guess = "";
-    std::getline(std::cin, Guess);
+    int32 ValidGuessAttempts = 0;
+    do 
+    {
+        int32 CurrentTry = BCGame.GetCurrentTry();
+        int32 MaxTries = BCGame.GetMaxTries();
+        std::cout << std::endl;
+        std::cout << "\e[36mAttempt " << CurrentTry << "/" << MaxTries << ": " << "Enter your guess: \e[0m";
+        std::getline(std::cin, Guess);
+        Guess = BCGame.EnforceLowerCase(Guess);  //  Enforce lowercase character
+        Status = BCGame.CheckGuessValidity(Guess);
+        switch (Status)
+        {
+            case EGuessValidity::Wrong_Length:
+                std::cout << "\e[31mWRONG LENGTH!\e[37m Please enter a " << BCGame.GetHiddenWordLength() << " letter word.\e[0m\n";
+                break;
+            case EGuessValidity::Not_Iso:
+                std::cout << "\e[31mNOT AN ISOGRAM!\e[37m Please enter a word with no repeating letters\e[0m\n";
+                break;
+            default:
+                break;
+        }
+        ValidGuessAttempts++;
+        if (ValidGuessAttempts == 5) std::cout << "\e[35mCome on my guy, it's not that hard\e[0m\n";
+        if (ValidGuessAttempts == 10) std::cout << "\e[35mYo wtf are you doing?\e[0m\n";
+        if (ValidGuessAttempts == 15) std::cout << "\e[35mYou're on your own, I can't help you\e[0m\n";
+    } while (Status != EGuessValidity::OK); // Keep looping until a valid guess is submitted
 
-    return Guess;
+    return Guess; // Status is OK, returning Guess
 }
 
 bool AskToPlayAgain()
 {
-    std::cout << "Would you like to play again? [Y/n]";
+    std::cout << "Would you like to play again? [Y/N]";
     FText Response = "";
     std::getline(std::cin, Response);
 
         
-    return (Response[0] == 'y') || (Response[0] == 'Y');
+    if ((Response[0] == 'y') || (Response[0] == 'Y'))
+    {
+        BCGame.Reset();
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void PrintGameSummary()
+{
+    if (BCGame.IsGameWon()) std::cout << "\e[33mYou Won\e[37m Congratulations!!\n";
+    else std::cout << "\e[31mGame Over\e[37m You ran out of guesses, better luck next time\n";
+    return;
 }
 
 /**

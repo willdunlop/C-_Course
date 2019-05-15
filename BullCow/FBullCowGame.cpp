@@ -6,46 +6,87 @@ FBullCowGame::FBullCowGame()
    Reset();
 }
 
-int32 FBullCowGame::GetMaxTries() const { return MyMaxTries; }
 int32 FBullCowGame::GetCurrentTry() const { return MyCurrentTry; }
-bool FBullCowGame::IsGameWon() const { return false; }
+int32 FBullCowGame::GetHiddenWordLength() const { return MyHiddenWord.length(); }
+bool FBullCowGame::IsGameWon() const { return bIsGameWon; }
 
-void FBullCowGame::Reset() 
+
+int32 FBullCowGame::GetMaxTries() const 
+{ 
+    TMap<int32, int32> WordLengthToMaxTries{ {3,4}, {4,7}, {5,10}, {6,16} };
+    return WordLengthToMaxTries[MyHiddenWord.length()]; 
+}
+
+// bool FBullCowGame::IsIsogram(FString Guess) const 
+// {
+//     for (int32 i=0; i < Guess.length(); i++)
+//     {   
+//         for (int32 j=0; j < Guess.length(); j++) 
+//         {
+//             // if the letters are the same character, but not the same position
+//             if (Guess[i] == Guess[j] && i != j) return false;
+//         }
+//     }
+//     return true;
+// };
+
+bool FBullCowGame::IsIsogram(FString Guess) const
 {
-    constexpr int32 MAX_TRIES = 8;
-    MyMaxTries = MAX_TRIES;
+    TMap<char, bool> LetterSeen;
+    for (auto Letter : Guess)   //  auto type instead of char. Lets the compiler decide what type it is
+    {
+        if (!LetterSeen[Letter]) { LetterSeen[Letter]=true; }
+        else { return false; }
+    }
+    return true;
+}
 
+void FBullCowGame::Reset()
+{
     const FString HIDDEN_WORD = "planet";
     MyHiddenWord = HIDDEN_WORD;
 
     MyCurrentTry = 1;
+    bIsGameWon = false;
 
     return;
 }
 
-bool FBullCowGame::CheckGuesValidity(FString) 
+EGuessValidity FBullCowGame::CheckGuessValidity(FString Guess) const
 {
-    return false;
+    if (Guess.length() != GetHiddenWordLength()) 
+        return EGuessValidity::Wrong_Length;
+    else if (!IsIsogram(Guess)) return EGuessValidity::Not_Iso;
+    // else if (!IsLowerCase(Guess)) return EGuessValidity::Not_Lowercase;
+    else return EGuessValidity::OK; //    TODO: Complet this function
 }
 
-FBullCowCount FBullCowGame::SubmitGuess(FString Guess)
+FString FBullCowGame::EnforceLowerCase(FString Guess) const
 {
-    //incriment the turn number
-    MyCurrentTry++;
-    // setup a return variable
-    FBullCowCount BullCowCount;
+    for (int32 i=0; i < Guess.length(); i++)
+        if (!std::islower(Guess[i])) Guess[i] = std::tolower(Guess[i]);
 
+    return Guess;
+}
+
+
+FBullCowCount FBullCowGame::SubmitValidGuess(FString Guess)
+{
+    MyCurrentTry++;
+    FBullCowCount BullCowCount;
+    int32 HiddenWordLength = FBullCowGame::GetHiddenWordLength();
     // loop through all letters in guess
-    int32 HiddenWordLength = MyHiddenWord.length();
-    for (int32 i = 0; i < HiddenWordLength; i++) 
+    for (int32 i = 0; i < HiddenWordLength; i++)
     {
         if(Guess[i] == MyHiddenWord[i]) BullCowCount.Bulls++;
-        for (int32 j = 0; j < HiddenWordLength; j++)
-        {
-            if(Guess[i] == MyHiddenWord[j]) BullCowCount.Cows++;
+        else {
+            for (int32 j = 0; j < HiddenWordLength; j++)
+                if(Guess[i] == MyHiddenWord[j]) BullCowCount.Cows++;
         }
     }
-    // compare letters against the hidden word
 
+    if (BullCowCount.Bulls == HiddenWordLength) bIsGameWon = true;
+    else bIsGameWon = false;
     return BullCowCount;
 }
+
